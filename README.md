@@ -1,5 +1,7 @@
 # Gestão de Estoque e Vendas
 
+![testes](https://github.com/hectorkaul/gestao-estoque/actions/workflows/ci.yml/badge.svg)
+
 Sistema de console em Java para controlar estoque e vendas de uma loja pequena. Usei como exemplo uma loja de material de construção, porque é um tipo de negócio que ainda controla muita coisa em caderno ou planilha.
 
 A ideia surgiu do meu dia a dia: no trabalho lido com lançamentos em ERP e planilhas de controle, e queria entender na prática como um sistema desses funciona por dentro, do banco de dados até o relatório.
@@ -85,6 +87,8 @@ O `service` só conhece as interfaces do `repository`, não o JDBC. Se um dia eu
 ## Testes
 
 São 23 testes com JUnit 5. Os de serviço usam um SQLite em memória, criado do zero a cada teste, então testam o SQL de verdade e não precisam de nenhum arquivo. O relógio (`Clock`) é fixo nos testes, assim as datas não mudam conforme o dia em que roda.
+
+Os testes também rodam no GitHub Actions a cada push (`.github/workflows/ci.yml`).
 
 ## Próximos passos
 
