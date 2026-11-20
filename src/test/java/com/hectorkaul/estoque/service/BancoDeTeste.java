@@ -3,7 +3,9 @@ package com.hectorkaul.estoque.service;
 import com.hectorkaul.estoque.db.Database;
 import com.hectorkaul.estoque.db.TransacaoJdbc;
 import com.hectorkaul.estoque.model.Produto;
+import com.hectorkaul.estoque.repository.jdbc.FornecedorRepositoryJdbc;
 import com.hectorkaul.estoque.repository.jdbc.MovimentacaoRepositoryJdbc;
+import com.hectorkaul.estoque.repository.jdbc.PedidoCompraRepositoryJdbc;
 import com.hectorkaul.estoque.repository.jdbc.ProdutoRepositoryJdbc;
 import com.hectorkaul.estoque.repository.jdbc.VendaRepositoryJdbc;
 
@@ -26,6 +28,8 @@ class BancoDeTeste implements AutoCloseable {
     final EstoqueService estoque = new EstoqueService(produtos, movimentacoes, relogio);
     final VendaService vendaService = new VendaService(produtos, movimentacoes, vendas, new TransacaoJdbc(database), relogio);
     final RelatorioService relatorios = new RelatorioService(vendas);
+    final CompraService compras = new CompraService(new FornecedorRepositoryJdbc(database),
+            new PedidoCompraRepositoryJdbc(database), produtos, movimentacoes, new TransacaoJdbc(database), relogio);
 
     BancoDeTeste() {
         database.criarTabelas();

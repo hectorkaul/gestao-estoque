@@ -5,9 +5,12 @@ import com.hectorkaul.estoque.db.TransacaoJdbc;
 import com.hectorkaul.estoque.repository.MovimentacaoRepository;
 import com.hectorkaul.estoque.repository.ProdutoRepository;
 import com.hectorkaul.estoque.repository.VendaRepository;
+import com.hectorkaul.estoque.repository.jdbc.FornecedorRepositoryJdbc;
 import com.hectorkaul.estoque.repository.jdbc.MovimentacaoRepositoryJdbc;
+import com.hectorkaul.estoque.repository.jdbc.PedidoCompraRepositoryJdbc;
 import com.hectorkaul.estoque.repository.jdbc.ProdutoRepositoryJdbc;
 import com.hectorkaul.estoque.repository.jdbc.VendaRepositoryJdbc;
+import com.hectorkaul.estoque.service.CompraService;
 import com.hectorkaul.estoque.service.EstoqueService;
 import com.hectorkaul.estoque.service.RelatorioService;
 import com.hectorkaul.estoque.service.VendaService;
@@ -44,19 +47,23 @@ public class App {
             VendaService vendaService = new VendaService(produtos, movimentacoes, vendas,
                     new TransacaoJdbc(database), relogio);
             RelatorioService relatorioService = new RelatorioService(vendas);
+            CompraService compraService = new CompraService(new FornecedorRepositoryJdbc(database),
+                    new PedidoCompraRepositoryJdbc(database), produtos, movimentacoes,
+                    new TransacaoJdbc(database), relogio);
 
             if (demo) {
                 if (produtos.listarTodos().isEmpty()) {
                     System.out.println("Gerando dados de exemplo (3 meses de vendas)...");
                     new DadosExemplo(estoqueService, vendaService).carregar(3);
+                    DadosExemplo.cadastrarFornecedores(compraService);
                     System.out.println("Pronto.\n");
                 } else {
                     System.out.println("O banco ja tem produtos, nao gerei dados de exemplo.\n");
                 }
             }
 
-            new Menu(estoqueService, vendaService, relatorioService, new ExportadorCsv(), new Entrada(scanner))
-                    .iniciar();
+            new Menu(estoqueService, vendaService, relatorioService, compraService, new ExportadorCsv(),
+                    new Entrada(scanner)).iniciar();
         }
     }
 }

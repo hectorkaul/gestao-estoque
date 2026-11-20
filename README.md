@@ -12,6 +12,7 @@ A ideia surgiu do meu dia a dia: no trabalho lido com lançamentos em ERP e plan
 - Entrada de mercadoria e saída manual (perda, quebra, uso interno)
 - Registro de vendas com vários itens, com baixa automática no estoque
 - Lista de produtos que precisam ser repostos (no mínimo ou abaixo)
+- Cadastro de fornecedores e pedidos de compra: o pedido pode ser montado na mão ou gerado direto da lista de reposição, e o estoque só aumenta quando o pedido é recebido
 - Histórico de cada produto, com saldo linha a linha
 - Relatórios: faturamento do período, ticket médio, faturamento por mês, produtos mais vendidos e melhores clientes
 - Exportação em CSV no padrão brasileiro (`;` e vírgula decimal), que abre direto no Excel e no Power BI
@@ -32,7 +33,7 @@ mvn package
 java -jar target/gestao-estoque.jar --demo
 ```
 
-O `--demo` cria um banco com 14 produtos e uns 3 meses de vendas geradas automaticamente, para dar para testar os relatórios sem cadastrar tudo na mão. Sem o `--demo`, o sistema começa com o banco vazio. O arquivo do banco é o `estoque.db`, criado na pasta onde o comando rodou.
+O `--demo` cria um banco com 14 produtos, 3 fornecedores e uns 3 meses de vendas geradas automaticamente, para dar para testar os relatórios sem cadastrar tudo na mão. Sem o `--demo`, o sistema começa com o banco vazio. O arquivo do banco é o `estoque.db`, criado na pasta onde o comando rodou.
 
 Para rodar só os testes:
 
@@ -63,10 +64,10 @@ Top 5 produtos mais vendidos:
 
 ```
 src/main/java/com/hectorkaul/estoque
-├── model        Produto, Venda, ItemVenda, Movimentacao
+├── model        Produto, Venda, Movimentacao, Fornecedor, PedidoCompra
 ├── repository   interfaces dos repositórios
 │   └── jdbc     implementação com SQL
-├── service      regras de negócio (estoque, venda, relatórios)
+├── service      regras de negócio (estoque, venda, compras, relatórios)
 ├── db           conexão e controle de transação
 ├── ui           menu do console
 └── util         exportação CSV
@@ -82,17 +83,21 @@ O `service` só conhece as interfaces do `repository`, não o JDBC. Se um dia eu
 
 **Validação antes de gravar.** Se um dos itens não tem estoque suficiente, a venda inteira é recusada antes de abrir a transação. Se o mesmo produto for digitado duas vezes, as quantidades são somadas antes de conferir o estoque.
 
+**Pedido de compra não mexe no estoque.** Mercadoria pedida ainda não está na prateleira. A entrada só acontece no recebimento, de todos os itens de uma vez e dentro de uma transação, e cada item fica no histórico como "Pedido de compra #N - fornecedor". Pedido recebido ou cancelado não pode ser recebido de novo.
+
+**Sugestão de compra com folga.** O pedido gerado pela lista de reposição compra o que falta para chegar no mínimo mais uma folga (por exemplo 50% do mínimo). Sem a folga, o produto chegaria e já estaria no limite de novo.
+
 **Ranking no SQL, o resto com Streams.** O "mais vendidos" é um `GROUP BY` direto no banco. O faturamento por mês e por cliente uso `Collectors.groupingBy`, para praticar as duas formas.
 
 ## Testes
 
-São 23 testes com JUnit 5. Os de serviço usam um SQLite em memória, criado do zero a cada teste, então testam o SQL de verdade e não precisam de nenhum arquivo. O relógio (`Clock`) é fixo nos testes, assim as datas não mudam conforme o dia em que roda.
+São 31 testes com JUnit 5. Os de serviço usam um SQLite em memória, criado do zero a cada teste, então testam o SQL de verdade e não precisam de nenhum arquivo. O relógio (`Clock`) é fixo nos testes, assim as datas não mudam conforme o dia em que roda.
 
 Os testes também rodam no GitHub Actions a cada push (`.github/workflows/ci.yml`).
 
 ## Próximos passos
 
-- [ ] Cadastro de fornecedores e pedido de compra
+- [x] Cadastro de fornecedores e pedido de compra
 - [ ] Cancelamento de venda (devolvendo o estoque)
 - [ ] Trocar o console por uma API REST com Spring Boot
 - [ ] Dashboard no Power BI usando os CSVs exportados

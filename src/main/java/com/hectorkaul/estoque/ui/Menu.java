@@ -1,11 +1,15 @@
 package com.hectorkaul.estoque.ui;
 
 import com.hectorkaul.estoque.exception.RegraDeNegocioException;
+import com.hectorkaul.estoque.model.Fornecedor;
+import com.hectorkaul.estoque.model.ItemCompra;
 import com.hectorkaul.estoque.model.ItemVenda;
 import com.hectorkaul.estoque.model.Movimentacao;
+import com.hectorkaul.estoque.model.PedidoCompra;
 import com.hectorkaul.estoque.model.Produto;
 import com.hectorkaul.estoque.model.ProdutoVendido;
 import com.hectorkaul.estoque.model.Venda;
+import com.hectorkaul.estoque.service.CompraService;
 import com.hectorkaul.estoque.service.EstoqueService;
 import com.hectorkaul.estoque.service.ItemPedido;
 import com.hectorkaul.estoque.service.RelatorioService;
@@ -25,14 +29,16 @@ public class Menu {
     private final EstoqueService estoque;
     private final VendaService vendas;
     private final RelatorioService relatorios;
+    private final CompraService compras;
     private final ExportadorCsv exportador;
     private final Entrada entrada;
 
     public Menu(EstoqueService estoque, VendaService vendas, RelatorioService relatorios,
-                ExportadorCsv exportador, Entrada entrada) {
+                CompraService compras, ExportadorCsv exportador, Entrada entrada) {
         this.estoque = estoque;
         this.vendas = vendas;
         this.relatorios = relatorios;
+        this.compras = compras;
         this.exportador = exportador;
         this.entrada = entrada;
     }
@@ -65,6 +71,7 @@ public class Menu {
         System.out.println(" 8 - Historico de um produto");
         System.out.println(" 9 - Relatorios de vendas");
         System.out.println("10 - Exportar CSV (Excel / Power BI)");
+        System.out.println("11 - Fornecedores e pedidos de compra");
         System.out.println(" 0 - Sair");
     }
 
@@ -80,6 +87,7 @@ public class Menu {
             case "8" -> historico();
             case "9" -> relatorios();
             case "10" -> exportar();
+            case "11" -> menuCompras();
             case "0" -> {
                 return false;
             }
@@ -246,5 +254,115 @@ public class Menu {
         System.out.println("Arquivos gerados em " + destino.toAbsolutePath() + ":");
         System.out.println("  produtos.csv");
         System.out.println("  vendas.csv");
+    }
+
+    private void menuCompras() {
+        System.out.println("--- Compras ---");
+        System.out.println(" 1 - Cadastrar fornecedor");
+        System.out.println(" 2 - Listar fornecedores");
+        System.out.println(" 3 - Novo pedido de compra");
+        System.out.println(" 4 - Gerar pedido a partir da lista de reposicao");
+        System.out.println(" 5 - Pedidos em aberto");
+        System.out.println(" 6 - Receber pedido (da entrada no estoque)");
+        System.out.println(" 7 - Cancelar pedido");
+        System.out.println(" 0 - Voltar");
+        switch (entrada.texto("Opcao: ")) {
+            case "1" -> cadastrarFornecedor();
+            case "2" -> listarFornecedores();
+            case "3" -> novoPedidoDeCompra();
+            case "4" -> pedidoDeReposicao();
+            case "5" -> pedidosEmAberto();
+            case "6" -> receberPedido();
+            case "7" -> {
+                PedidoCompra pedido = compras.cancelar(entrada.inteiro("Numero do pedido: ", 1));
+                System.out.println("Pedido #" + pedido.getId() + " cancelado.");
+            }
+            case "0" -> { }
+            default -> System.out.println("Opcao invalida.");
+        }
+    }
+
+    private void cadastrarFornecedor() {
+        String nome = entrada.textoObrigatorio("Nome: ");
+        String contato = entrada.texto("Contato (telefone ou e-mail): ");
+        int prazo = entrada.inteiro("Prazo de entrega em dias: ", 0);
+        Fornecedor fornecedor = compras.cadastrarFornecedor(new Fornecedor(nome, contato, prazo));
+        System.out.println("Fornecedor cadastrado: " + fornecedor);
+    }
+
+    private void listarFornecedores() {
+        List<Fornecedor> lista = compras.listarFornecedores();
+        if (lista.isEmpty()) {
+            System.out.println("Nenhum fornecedor cadastrado.");
+            return;
+        }
+        lista.forEach(f -> System.out.printf("  #%-4d %-30s %-25s prazo %d dia(s)%n",
+                f.getId(), Formato.cortar(f.getNome(), 30), Formato.cortar(f.getContato(), 25), f.getPrazoEntregaDias()));
+    }
+
+    private long escolherFornecedor() {
+        listarFornecedores();
+        return entrada.inteiro("Numero do fornecedor: ", 1);
+    }
+
+    private void novoPedidoDeCompra() {
+        long fornecedorId = escolherFornecedor();
+        List<ItemPedido> itens = new ArrayList<>();
+        System.out.println("Digite os itens. Codigo vazio termina.");
+        while (true) {
+            String codigo = entrada.texto("  Codigo: ");
+            if (codigo.isEmpty()) {
+                break;
+            }
+            Produto produto = estoque.buscar(codigo);
+            System.out.println("  " + produto.getNome() + " - custo " + Formato.moeda(produto.getPrecoCusto())
+                    + " (estoque: " + produto.getEstoqueAtual() + ")");
+            itens.add(new ItemPedido(codigo, entrada.inteiro("  Quantidade: ", 1)));
+        }
+        if (itens.isEmpty()) {
+            System.out.println("Pedido nao criado, nenhum item.");
+            return;
+        }
+        imprimirPedido(compras.criarPedido(fornecedorId, itens));
+    }
+
+    private void pedidoDeReposicao() {
+        long fornecedorId = escolherFornecedor();
+        int folga = entrada.inteiro("Folga acima do minimo, em % (ex: 50): ", 0);
+        imprimirPedido(compras.criarPedidoDeReposicao(fornecedorId, folga / 100.0));
+    }
+
+    private void pedidosEmAberto() {
+        List<PedidoCompra> abertos = compras.pedidosEmAberto();
+        if (abertos.isEmpty()) {
+            System.out.println("Nenhum pedido em aberto.");
+            return;
+        }
+        LocalDate hoje = LocalDate.now();
+        for (PedidoCompra p : abertos) {
+            System.out.printf("  #%-4d %-25s previsto %s  %3d itens  %14s%s%n",
+                    p.getId(), Formato.cortar(p.getFornecedorNome(), 25), Formato.data(p.getPrevisaoEntrega()),
+                    p.getItens().size(), Formato.moeda(p.total()), p.atrasado(hoje) ? "  <- ATRASADO" : "");
+        }
+    }
+
+    private void receberPedido() {
+        PedidoCompra pedido = compras.buscarPedido(entrada.inteiro("Numero do pedido: ", 1));
+        imprimirPedido(pedido);
+        if (entrada.simOuNao("Confirmar o recebimento de todos os itens?")) {
+            compras.receber(pedido.getId());
+            System.out.println("Pedido recebido, estoque atualizado.");
+        }
+    }
+
+    private void imprimirPedido(PedidoCompra pedido) {
+        System.out.println();
+        System.out.println("Pedido de compra #" + pedido.getId() + " - " + pedido.getFornecedorNome()
+                + " (" + pedido.getStatus() + ", previsto para " + Formato.data(pedido.getPrevisaoEntrega()) + ")");
+        for (ItemCompra item : pedido.getItens()) {
+            System.out.printf("  %4dx %-8s %-30s %12s%n", item.quantidade(), item.codigo(),
+                    Formato.cortar(item.nome(), 30), Formato.moeda(item.subtotal()));
+        }
+        System.out.println("  TOTAL: " + Formato.moeda(pedido.total()));
     }
 }

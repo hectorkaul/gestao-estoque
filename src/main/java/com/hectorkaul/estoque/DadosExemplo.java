@@ -1,6 +1,8 @@
 package com.hectorkaul.estoque;
 
+import com.hectorkaul.estoque.model.Fornecedor;
 import com.hectorkaul.estoque.model.Produto;
+import com.hectorkaul.estoque.service.CompraService;
 import com.hectorkaul.estoque.service.EstoqueService;
 import com.hectorkaul.estoque.service.ItemPedido;
 import com.hectorkaul.estoque.service.VendaService;
@@ -103,6 +105,13 @@ public class DadosExemplo {
                 estoque.registrarEntrada(atual.getCodigo(), atual.getEstoqueMinimo() * 3, "Pedido ao fornecedor", quando);
             }
         }
+    }
+
+    /** Fornecedores de exemplo, para testar o menu de compras. */
+    public static void cadastrarFornecedores(CompraService compras) {
+        compras.cadastrarFornecedor(new Fornecedor("Distribuidora Sul Cimentos", "(53) 3200-1100", 2));
+        compras.cadastrarFornecedor(new Fornecedor("Hidraulica e Eletrica Pampa", "vendas@pampa.exemplo", 5));
+        compras.cadastrarFornecedor(new Fornecedor("Tintas Litoral", "(51) 3300-2200", 7));
     }
 
     private static BigDecimal dec(String valor) {

@@ -1,5 +1,5 @@
 package com.hectorkaul.estoque.service;
 
-/** O que o vendedor digita no caixa: codigo do produto e quantidade. */
+/** Codigo do produto e quantidade. Usado na venda (caixa) e no pedido de compra. */
 public record ItemPedido(String codigoProduto, int quantidade) {
 }
